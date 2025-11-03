@@ -1,5 +1,5 @@
 import React from 'react';
-import { PlusCircleIcon, TicketIcon, UserGroupIcon, UserIcon } from './common/Icons';
+import { PlusCircleIcon, HelpdeskIcon, UserGroupIcon, UserIcon } from './common/Icons';
 
 interface HeaderProps {
   onCreateTicketClick: () => void;
@@ -12,7 +12,7 @@ const Header: React.FC<HeaderProps> = ({ onCreateTicketClick, userRole, onToggle
     <header className="bg-white dark:bg-gray-800 shadow-md">
       <div className="container mx-auto px-4 md:px-8 py-4 flex justify-between items-center">
         <div className="flex items-center space-x-3">
-          <TicketIcon className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+          <HelpdeskIcon className="h-8 w-8 text-blue-600 dark:text-blue-400" />
           <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">
             Helpdesk AI Assistant
           </h1>

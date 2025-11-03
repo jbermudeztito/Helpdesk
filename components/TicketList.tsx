@@ -56,7 +56,8 @@ const TicketList: React.FC<TicketListProps> = ({ tickets, onTicketSelect, onBack
             }
             const dateA = new Date(a[sortKey]).getTime();
             const dateB = new Date(b[sortKey]).getTime();
-            return sortOrder === 'asc' ? dateA - dateB : dateB - a;
+            // FIX: Corrected typo from 'a' to 'dateA' in the sort comparison.
+            return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
         });
 
     }, [tickets, searchTerm, statusFilter, sortKey, sortOrder]);
