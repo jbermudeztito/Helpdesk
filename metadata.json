@@ -1,5 +1,5 @@
 {
-  "name": "Helpdesk AI Assistant Prototype",
+  "name": "Helpdesk AI Assistant Prototype-2",
   "description": "A web application prototype for a Helpdesk system designed for Oracle APEX. It features AI-powered ticket categorization suggestions using the Gemini API to streamline the support process.",
   "requestFramePermissions": []
 }

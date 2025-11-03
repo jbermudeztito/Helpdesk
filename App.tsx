@@ -1,208 +1,163 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
+import type { Ticket, TicketAgente, TicketHistorial } from './types';
 import Header from './components/Header';
-import TicketList from './components/TicketList';
-import CreateTicketForm from './components/CreateTicketForm';
-import TicketDetailView from './components/TicketDetailView';
-import AgentDashboard from './components/AgentDashboard';
 import UserDashboard from './components/UserDashboard';
-import type { Ticket, Comentario, TicketAgente, TicketHistorial } from './types';
-import { MOCK_TICKETS, MOCK_COMENTARIOS, MOCK_TICKET_AGENTES, MOCK_TICKET_HISTORIAL, MOCK_AGENTES, MOCK_USUARIOS } from './constants';
+import AgentDashboard from './components/AgentDashboard';
+import TicketList from './components/TicketList';
+import TicketDetailView from './components/TicketDetailView';
+import CreateTicketForm from './components/CreateTicketForm';
+import { MOCK_TICKETS, MOCK_TICKET_AGENTES, MOCK_TICKET_HISTORIAL, MOCK_AGENTES, MOCK_USUARIOS } from './constants';
 
-type View = 'list' | 'create' | 'detail' | 'agent-dashboard' | 'user-dashboard';
+type View = 'USER_DASHBOARD' | 'AGENT_DASHBOARD' | 'TICKET_LIST' | 'TICKET_DETAIL' | 'CREATE_TICKET';
 type UserRole = 'user' | 'agent';
 
 const App: React.FC = () => {
-  const [view, setView] = useState<View>('user-dashboard');
-  const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
   const [tickets, setTickets] = useState<Ticket[]>(MOCK_TICKETS);
-  const [comments, setComments] = useState<Comentario[]>(MOCK_COMENTARIOS);
-  const [ticketAgents, setTicketAgents] = useState<TicketAgente[]>(MOCK_TICKET_AGENTES);
-  const [userRole, setUserRole] = useState<UserRole>('user');
+  const [ticketAgentAssignments, setTicketAgentAssignments] = useState<TicketAgente[]>(MOCK_TICKET_AGENTES);
   const [ticketHistory, setTicketHistory] = useState<TicketHistorial[]>(MOCK_TICKET_HISTORIAL);
+  const [currentView, setCurrentView] = useState<View>('USER_DASHBOARD');
+  const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
   const [preselectedAreaId, setPreselectedAreaId] = useState<number | null>(null);
+  const [userRole, setUserRole] = useState<UserRole>('user');
 
-  const handleCreateTicketClick = useCallback(() => {
-    setView('user-dashboard');
-    setSelectedTicketId(null);
+  const handleCreateTicketClick = () => {
     setPreselectedAreaId(null);
-  }, []);
-
-  const handleAreaSelectForCreation = useCallback((areaId: number) => {
+    setCurrentView('CREATE_TICKET');
+  };
+  
+  const handleAreaSelect = (areaId: number) => {
     setPreselectedAreaId(areaId);
-    setView('create');
-  }, []);
-  
-  const handleViewMyTickets = useCallback(() => {
-      setView('list');
-  }, []);
-
-  const handleTicketSelect = useCallback((id: number) => {
-    setSelectedTicketId(id);
-    setView('detail');
-  }, []);
-
-  const handleBackToList = useCallback(() => {
-    setPreselectedAreaId(null);
-    if (userRole === 'agent') {
-      setView('agent-dashboard');
-    } else {
-      setView('user-dashboard');
-    }
-    setSelectedTicketId(null);
-  }, [userRole]);
-  
-  const addHistoryEntry = useCallback((ticketId: number, campo: string, valorAnterior: string, valorNuevo: string, usuarioId: number) => {
-    const newHistoryEntry: TicketHistorial = {
-      ID_HISTORIAL: Date.now(),
-      ID_TICKET: ticketId,
-      CAMPO_CAMBIADO: campo,
-      VALOR_ANTERIOR: valorAnterior,
-      VALOR_NUEVO: valorNuevo,
-      FECHA_CAMBIO: new Date().toISOString(),
-      ID_USUARIO: usuarioId,
-    };
-    setTicketHistory(prev => [newHistoryEntry, ...prev]);
-  }, []);
-
-  const updateTicketStatus = useCallback((ticketId: number, newStatus: string) => {
-    const ticketToUpdate = tickets.find(t => t.ID_TICKET === ticketId);
-    if (!ticketToUpdate) return;
-    
-    const oldStatus = ticketToUpdate.ESTADO;
-    const changerUserId = userRole === 'agent' 
-        ? (MOCK_USUARIOS.find(u => u.EMAIL.includes('Roberto'))?.ID_USUARIO ?? 101) 
-        : ticketToUpdate.ID_USUARIO;
-
-    setTickets(prevTickets =>
-        prevTickets.map(ticket =>
-            ticket.ID_TICKET === ticketId ? { ...ticket, ESTADO: newStatus as Ticket['ESTADO'], FECHA_ACTUALIZACION: new Date().toISOString() } : ticket
-        )
-    );
-    
-    if (oldStatus !== newStatus) {
-        addHistoryEntry(ticketId, 'ESTADO', oldStatus, newStatus, changerUserId);
-    }
-  }, [tickets, userRole, addHistoryEntry]);
-  
-  const handleAddComment = (ticketId: number, newComment: Comentario) => {
-    setComments(prevComments => [...prevComments, newComment]);
-
-    const ticket = tickets.find(t => t.ID_TICKET === ticketId);
-    const isUserComment = !MOCK_AGENTES.some(a => a.ID_USUARIO === newComment.ID_USUARIO);
-
-    if (ticket && ticket.ESTADO === 'En Espera' && isUserComment) {
-        updateTicketStatus(ticketId, 'En Progreso');
-    }
+    setCurrentView('CREATE_TICKET');
   };
 
   const handleTicketCreate = (newTicketData: Omit<Ticket, 'ID_TICKET' | 'FECHA_CREACION' | 'FECHA_ACTUALIZACION'>) => {
     const newTicket: Ticket = {
       ...newTicketData,
-      ID_TICKET: tickets.length > 0 ? Math.max(...tickets.map(t => t.ID_TICKET)) + 1 : 1,
+      ID_TICKET: Math.max(...tickets.map(t => t.ID_TICKET), 0) + 1,
       FECHA_CREACION: new Date().toISOString(),
       FECHA_ACTUALIZACION: new Date().toISOString(),
     };
-    setTickets(prevTickets => [newTicket, ...prevTickets]);
-    setView('user-dashboard');
-    setPreselectedAreaId(null);
+    setTickets(prevTickets => [...prevTickets, newTicket]);
+    setCurrentView(userRole === 'user' ? 'USER_DASHBOARD' : 'AGENT_DASHBOARD');
+  };
+  
+  const handleTicketSelect = (id: number) => {
+    setSelectedTicketId(id);
+    setCurrentView('TICKET_DETAIL');
   };
 
-  const handleAssignAgent = (ticketId: number, agentId: number, role: 'Principal' | 'Secundario' | 'Colaborador') => {
-      const isAlreadyAssigned = ticketAgents.some(
-        ta => ta.ID_TICKET === ticketId && ta.ID_AGENTE === agentId
+  const handleAssignAgent = (ticketId: number, agentId: number) => {
+      const isAlreadyAssigned = ticketAgentAssignments.some(
+          ta => ta.ID_TICKET === ticketId && ta.ID_AGENTE === agentId && ta.ACTIVO === 'S'
       );
-      if (isAlreadyAssigned) return;
+
+      if (isAlreadyAssigned) {
+          console.warn("Agent already assigned to this ticket.");
+          return;
+      }
 
       const newAssignment: TicketAgente = {
           ID_TICKET: ticketId,
           ID_AGENTE: agentId,
-          ROL_EN_TICKET: role,
+          ROL_EN_TICKET: 'Principal', // Default role for new assignment
           FECHA_ASIGNACION: new Date().toISOString(),
           ACTIVO: 'S',
       };
-      setTicketAgents(prev => [...prev, newAssignment]);
 
-      const ticket = tickets.find(t => t.ID_TICKET === ticketId);
-      if (ticket && ticket.ESTADO === 'Nuevo') {
-          updateTicketStatus(ticketId, 'Asignado');
+      setTicketAgentAssignments(prev => [...prev, newAssignment]);
+
+      // Update ticket status if it's 'Nuevo'
+      const originalTicket = tickets.find(t => t.ID_TICKET === ticketId);
+      if (originalTicket && originalTicket.ESTADO === 'Nuevo') {
+          setTickets(prevTickets => prevTickets.map(ticket =>
+              ticket.ID_TICKET === ticketId
+                  ? { ...ticket, ESTADO: 'Asignado', FECHA_ACTUALIZACION: new Date().toISOString() }
+                  : ticket
+          ));
+          // Add history for status change
+           const statusHistoryEntry: TicketHistorial = {
+              ID_HISTORIAL: Date.now() + 1, // ensure unique key
+              ID_TICKET: ticketId,
+              CAMPO_CAMBIADO: 'ESTADO',
+              VALOR_ANTERIOR: 'Nuevo',
+              VALOR_NUEVO: 'Asignado',
+              FECHA_CAMBIO: new Date().toISOString(),
+              ID_USUARIO: 101, // Mock agent user performing the action
+          };
+           setTicketHistory(prev => [...prev, statusHistoryEntry]);
       }
-  };
-
-  const handleUnassignAgent = (ticketId: number, agentId: number) => {
-      const remainingAgents = ticketAgents.filter(ta => ta.ID_TICKET === ticketId && ta.ID_AGENTE !== agentId);
-      setTicketAgents(prev => prev.filter(ta => !(ta.ID_TICKET === ticketId && ta.ID_AGENTE === agentId)));
       
-      if (remainingAgents.length === 0) {
-        const ticket = tickets.find(t => t.ID_TICKET === ticketId);
-        if (ticket && ticket.ESTADO === 'Asignado') {
-            updateTicketStatus(ticketId, 'Nuevo');
-        }
-      }
+      const agent = MOCK_AGENTES.find(a => a.ID_AGENTE === agentId);
+      const agentInfo = MOCK_USUARIOS.find(u => u.ID_USUARIO === agent?.ID_USUARIO);
+
+      const assignmentHistoryEntry: TicketHistorial = {
+          ID_HISTORIAL: Date.now(),
+          ID_TICKET: ticketId,
+          CAMPO_CAMBIADO: 'Asignación',
+          VALOR_ANTERIOR: 'Sin asignar',
+          VALOR_NUEVO: `Asignado a ${agentInfo?.NOMBRE || 'Agente desconocido'}`,
+          FECHA_CAMBIO: new Date().toISOString(),
+          ID_USUARIO: 101, // Mock agent user performing the action
+      };
+      setTicketHistory(prev => [...prev, assignmentHistoryEntry]);
   };
 
-  const toggleUserRole = () => {
+
+  const handleBack = () => {
+     if (currentView === 'TICKET_LIST' || currentView === 'CREATE_TICKET') {
+        setCurrentView(userRole === 'user' ? 'USER_DASHBOARD' : 'AGENT_DASHBOARD');
+     } else if (currentView === 'TICKET_DETAIL') {
+        setCurrentView(userRole === 'user' ? 'TICKET_LIST' : 'AGENT_DASHBOARD');
+     } else {
+        setCurrentView(userRole === 'user' ? 'USER_DASHBOARD' : 'AGENT_DASHBOARD');
+     }
+  };
+  
+  const handleViewMyTickets = () => {
+      setCurrentView('TICKET_LIST');
+  };
+
+  const handleToggleRole = () => {
     setUserRole(prevRole => {
-      const newRole = prevRole === 'user' ? 'agent' : 'user';
-      if (newRole === 'agent') {
-        setView('agent-dashboard');
-      } else {
-        setView('user-dashboard');
-      }
-      setSelectedTicketId(null);
-      setPreselectedAreaId(null);
-      return newRole;
+        const newRole = prevRole === 'user' ? 'agent' : 'user';
+        setCurrentView(newRole === 'user' ? 'USER_DASHBOARD' : 'AGENT_DASHBOARD');
+        return newRole;
     });
   };
 
-  const selectedTicket = tickets.find(t => t.ID_TICKET === selectedTicketId) || null;
-
   const renderContent = () => {
-    switch (view) {
-      case 'user-dashboard':
-        return <UserDashboard onAreaSelect={handleAreaSelectForCreation} onViewMyTickets={handleViewMyTickets} />;
-      case 'create':
-        return <CreateTicketForm 
-                  onTicketCreate={handleTicketCreate} 
-                  onBack={handleBackToList}
-                  preselectedAreaId={preselectedAreaId} 
-                />;
-      case 'detail':
-        return selectedTicket ? (
-          <TicketDetailView 
-            ticket={selectedTicket} 
-            comments={comments}
-            ticketAgents={ticketAgents}
-            ticketHistory={ticketHistory}
+    switch (currentView) {
+      case 'USER_DASHBOARD':
+        return <UserDashboard onAreaSelect={handleAreaSelect} onViewMyTickets={handleViewMyTickets} />;
+      case 'AGENT_DASHBOARD':
+        return <AgentDashboard onTicketSelect={handleTicketSelect} tickets={tickets} ticketAgentAssignments={ticketAgentAssignments} />;
+      case 'TICKET_LIST':
+        // For simplicity, user sees their own tickets, agent sees all.
+        const userTickets = userRole === 'user' ? tickets.filter(t => t.ID_USUARIO === 1 || t.ID_USUARIO === 2 || t.ID_USUARIO === 3) : tickets;
+        return <TicketList tickets={userTickets} onTicketSelect={handleTicketSelect} onBack={handleBack} />;
+      case 'TICKET_DETAIL':
+        return <TicketDetailView 
+            ticketId={selectedTicketId!} 
+            onBack={handleBack}
             userRole={userRole}
-            onBack={handleBackToList} 
-            onAddComment={handleAddComment}
-            onStatusChange={updateTicketStatus}
-            onAssignAgent={handleAssignAgent}
-            onUnassignAgent={handleUnassignAgent}
-          />
-        ) : (
-          <p>Ticket not found.</p>
-        );
-      case 'agent-dashboard':
-        return <AgentDashboard 
-            tickets={tickets} 
-            ticketAgents={ticketAgents}
-            comments={comments} 
-            onTicketSelect={handleTicketSelect} 
+            tickets={tickets}
+            ticketAgentAssignments={ticketAgentAssignments}
+            ticketHistory={ticketHistory}
             onAssignAgent={handleAssignAgent}
         />;
-      case 'list':
+      case 'CREATE_TICKET':
+        return <CreateTicketForm onTicketCreate={handleTicketCreate} onBack={handleBack} preselectedAreaId={preselectedAreaId} />;
       default:
-        return <TicketList tickets={tickets} onTicketSelect={handleTicketSelect} onBack={handleBackToList} />;
+        return <UserDashboard onAreaSelect={handleAreaSelect} onViewMyTickets={handleViewMyTickets} />;
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 font-sans">
+    <div className="bg-gray-100 dark:bg-gray-900 min-h-screen font-sans text-gray-900 dark:text-gray-100">
       <Header 
-        onCreateTicketClick={handleCreateTicketClick} 
+        onCreateTicketClick={handleCreateTicketClick}
         userRole={userRole}
-        onToggleRole={toggleUserRole} 
+        onToggleRole={handleToggleRole}
       />
       <main className="container mx-auto p-4 md:p-8">
         {renderContent()}
